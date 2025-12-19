@@ -674,6 +674,8 @@ def run_simulations(
 
             status_ts.append(result.status)
             internals_ts.append(internals)
+        if i/len(signal) != (i-1)/len(signal):
+            print(f"progress: {i/len(signal)}/100")
     stims_sp = list(filter(lambda x: x >= 0 and x < len(signal), stims_sp))
 
     return SimulationResult(dataset, phase_tracker, stims_sp, status_ts,
@@ -798,7 +800,7 @@ def load_anphy_data(subject: str = 'EPCTL01',
     base_path = 'data/anphy_processed'
     path = os.path.join(base_path, f'{subject}.npy')
 
-    eeg_signal = np.load(path)[0]
+    eeg_signal = np.load(path)
     fs = 256
     if max_duration_s is not None:
         max_length = min(len(eeg_signal), int(max_duration_s * fs))

@@ -68,3 +68,11 @@ ds = load_data_as_dataset("/home/jhedemann/slow-wave/1024hz/Patient04_electrode0
 print(ds.name, ds.fs, ds.signal.shape, ds.signal.min(), ds.signal.max())
 
 # %%
+
+x = ds.signal.squeeze()
+print("median(|x|):", np.median(np.abs(x)))
+print("p95(|x|):", np.percentile(np.abs(x), 95))
+print("p99(|x|):", np.percentile(np.abs(x), 99))
+print("min/max:", x.min(), x.max())
+
+# %%
