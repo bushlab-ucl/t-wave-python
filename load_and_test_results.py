@@ -12,7 +12,7 @@ import Simulations
 with open("results_twave_downsampled.pkl", "rb") as f:
     results_twave = pickle.load(f)
 
-results_twave.plot_timeseries()
+results_twave.plot_timeseries(ground_truth="/home/jhedemann/slow-wave/1024hz/Patient04_OfflineMrk.mrk")
 plt.show()
 
 

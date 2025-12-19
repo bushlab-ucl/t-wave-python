@@ -73,6 +73,7 @@ class SimulationResult():
 
     def plot_timeseries(
         self,
+        ground_truth,
         axis_kwargs: Optional[dict] = None,
         time_lim: Optional[tuple] = None,
     ):
@@ -96,6 +97,12 @@ class SimulationResult():
         filtered_signal = scipy.signal.filtfilt(butter_filt[0], butter_filt[1],
                                                 self.Dataset.signal[time_mask])
 
+        # Parse ground-truth markdown file
+        with open(ground_truth, "r", encoding="utf-8") as input_file:
+            text = input_file.read()
+        lines = text.splitlines()[1:]  # skip header
+        ground_truth_sw_times = np.array([int(line.split()[0]) / self.Dataset.fs for line in lines if line.strip()])
+
         # Create the figure and axes.
         fig, ax = plt.subplots(3, 1, figsize=(16, 9), sharex=True)
 
@@ -110,6 +117,7 @@ class SimulationResult():
                  filtered_signal,
                  color='tab:blue',
                  label='Filtered Signal')
+        tax.vlines(ground_truth_sw_times, -3000, 3000, colors="red")
         tax.set_title(f'{self.PhaseTracker.name} - {self.Dataset.name}')
         tax.set_ylabel('Signal')
         tax.grid()
