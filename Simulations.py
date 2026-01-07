@@ -102,6 +102,8 @@ class SimulationResult():
             text = input_file.read()
         lines = text.splitlines()[1:]  # skip header
         ground_truth_sw_times = np.array([int(line.split()[0]) / self.Dataset.fs for line in lines if line.strip()])
+        print(ground_truth_sw_times.max())
+        ground_truth_sw_times_trunc = np.array([x for x in ground_truth_sw_times if x <= self.Dataset.t.max()])
 
         # Create the figure and axes.
         fig, ax = plt.subplots(3, 1, figsize=(16, 9), sharex=True)
@@ -117,7 +119,7 @@ class SimulationResult():
                  filtered_signal,
                  color='tab:blue',
                  label='Filtered Signal')
-        tax.vlines(ground_truth_sw_times, -3000, 3000, colors="red")
+        tax.vlines(ground_truth_sw_times_trunc, -3000, 3000, colors="red")
         tax.set_title(f'{self.PhaseTracker.name} - {self.Dataset.name}')
         tax.set_ylabel('Signal')
         tax.grid()
