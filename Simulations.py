@@ -7,6 +7,7 @@ from math import pi
 import enum
 from typing import NamedTuple, Optional, List, Tuple, Literal
 from tqdm import tqdm
+from pathlib import Path
 
 class PhaseTrackerStatus(enum.IntFlag):
     """
@@ -73,7 +74,8 @@ class SimulationResult():
 
     def plot_timeseries(
         self,
-        ground_truth,
+        ground_truth_sw,
+        ground_truth_ied,
         axis_kwargs: Optional[dict] = None,
         time_lim: Optional[tuple] = None,
     ):
@@ -97,13 +99,23 @@ class SimulationResult():
         filtered_signal = scipy.signal.filtfilt(butter_filt[0], butter_filt[1],
                                                 self.Dataset.signal[time_mask])
 
-        # Parse ground-truth markdown file
-        with open(ground_truth, "r", encoding="utf-8") as input_file:
-            text = input_file.read()
-        lines = text.splitlines()[1:]  # skip header
-        ground_truth_sw_times = np.array([int(line.split()[0]) / self.Dataset.fs for line in lines if line.strip()])
-        print(ground_truth_sw_times.max())
-        ground_truth_sw_times_trunc = np.array([x for x in ground_truth_sw_times if x <= self.Dataset.t.max()])
+        # # Parse ground-truth markdown file
+        # with open(ground_truth, "r", encoding="utf-8") as input_file:
+        #     text = input_file.read()
+        # lines = text.splitlines()[1:]  # skip header
+        # ground_truth_sw_times = np.array([int(line.split()[0]) / self.Dataset.fs for line in lines if line.strip()])
+        # print(ground_truth_sw_times.max())
+        # ground_truth_sw_times_trunc = np.array([x for x in ground_truth_sw_times if x <= self.Dataset.t.max()])
+
+        # Parse ground_truth npy files
+        path_sw = Path(ground_truth_sw)
+        path_ied = Path(ground_truth_ied)
+
+        arr_sw = np.load(path_sw)
+        arr_ied = np.load(path_ied)
+
+        arr_sw_trunc = np.array([x for x in arr_sw if x <= self.Dataset.t.max()])
+        arr_ied_trunc = np.array([x for x in arr_ied if x <= self.Dataset.t.max()])
 
         # Create the figure and axes.
         fig, ax = plt.subplots(3, 1, figsize=(16, 9), sharex=True)
@@ -119,7 +131,8 @@ class SimulationResult():
                  filtered_signal,
                  color='tab:blue',
                  label='Filtered Signal')
-        tax.vlines(ground_truth_sw_times_trunc, -3000, 3000, colors="red")
+        tax.vlines(arr_sw_trunc, -3000, 3000, colors="green")
+        tax.vlines(arr_ied_trunc, -3000, 3000, colors="red")
         tax.set_title(f'{self.PhaseTracker.name} - {self.Dataset.name}')
         tax.set_ylabel('Signal')
         tax.grid()

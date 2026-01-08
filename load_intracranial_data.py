@@ -62,6 +62,15 @@ def load_data_as_dataset(npy_path, fs=1024, max_duration_s=None):
     return SimulationDataset(t=t, signal=sig_uv, fs=fs, name=Path(npy_path).stem)
 
 
+def load_sw_annotation(npy_path):
+    path = Path(npy_path)
+    arr = np.load(path)
+    print(len(arr))
+    print(arr.shape)
+    print(arr)
+    return arr 
+
+
 # %%
 
 ds = load_data_as_dataset("/home/jhedemann/slow-wave/1024hz/Patient04_electrode01.npy", fs=1024)
@@ -74,5 +83,10 @@ print("median(|x|):", np.median(np.abs(x)))
 print("p95(|x|):", np.percentile(np.abs(x), 95))
 print("p99(|x|):", np.percentile(np.abs(x), 99))
 print("min/max:", x.min(), x.max())
+
+# %%
+path_sw_annot = "/home/jhedemann/slow-wave/annotated/Patient03_Channel1_SWs.npy"
+
+arr_sw_annot = load_sw_annotation(path_sw_annot)
 
 # %%

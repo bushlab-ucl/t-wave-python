@@ -5,14 +5,18 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 
-import Simulations
+from Simulations import PhaseTrackerStatus
 
-# %% MAIN SCRIPT
 
-with open("results_twave_downsampled_128.pkl", "rb") as f:
+# %% LOAD DATA
+
+with open("results/results_twave_patient03_channel1_06_full_recording.pkl", "rb") as f:
     results_twave = pickle.load(f)
 
-results_twave.plot_timeseries(ground_truth="/home/jhedemann/slow-wave/1024hz/Patient04_OfflineMrk.mrk")
+# %% SHOW MASTER PLOT OF RESULTS WITH GROUND TRUTH ANNOTATION
+
+results_twave.plot_timeseries(ground_truth_sw="/home/jhedemann/slow-wave/annotated/Patient03_Channel1_SWs.npy",
+                              ground_truth_ied="/home/jhedemann/slow-wave/annotated/Patient03_Channel1_IEDs.npy")
 plt.show()
 
 
@@ -21,20 +25,3 @@ print(len(results_twave.stims_sp))
 print(np.diff(results_twave.Dataset.t)*results_twave.Dataset.fs)
 
 print(results_twave.Dataset.t.max())
-
-# %%
-# from Simulations import PhaseTrackerStatus
-# import numpy as np
-
-# status = np.array(results_twave.status_ts)
-
-# def count(flag):
-#     return np.sum((status & flag) > 0)
-
-# print("STIM1:", count(PhaseTrackerStatus.STIM1))
-# print("INHIBITED_AMP:", count(PhaseTrackerStatus.INHIBITED_AMP))
-# print("INHIBITED_RATIO:", count(PhaseTrackerStatus.INHIBITED_RATIO))
-# print("INHIBITED_QUADRATURE:", count(PhaseTrackerStatus.INHIBITED_QUADRATURE))
-
-
-# %%
