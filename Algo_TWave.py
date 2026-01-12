@@ -18,24 +18,23 @@ class PhaseTracker():
         self.time_elapsed_s = 0.0  # float: in seconds, relative to end of last block/start of current block
 
         # store CLAS parameters
-        self.amp_threshold_uv = 80
-        self.amp_limit_uv = 4000 # change log 1000 - 2000 - 4000 - 600 (oldest) -> intracranial EEG instead of scalp EEG
+        self.amp_threshold_uv = 600 # changed from 500, 250, 80
+        self.amp_limit_uv = 1500 # changed from 3000, 2000, 4000, 600
         self.prediction_limit_s = 0.15
         self.backoff_time_s = 5.0
-        self.quadrature_thresh = 0.2
-        self.quadrature_len_s = 1.0
+        self.quadrature_thresh = 0.5 # changed from 0.8, 0.2
+        self.quadrature_len_s = 2.0 # changed from 1.0, 2.0
         self.freq_limits_hz = [0.6, 2.0]
 
         self.stim2_start_delay_s = 0.6
         self.stim2_end_delay_s = 5.0
         self.stim2_prediction_limit_s = 0.15
 
-        self.high_low_analysis = False
-        self.high_freq_vals_hz = [10, 20, 30]
-        self.high_low_freq_ratio = 0.15
-        self.high_low_freq_lookback_ratio = 0.15
+        self.high_low_analysis = True
+        self.high_freq_vals_hz = [10, 40, 70] # changed from [10, 20, 30]
+        self.high_low_freq_ratio = 0.50 # changed from 0.15
+        self.high_low_freq_lookback_ratio = 0.50 # changed from 0.15
         self.high_low_lookback_nblocks = 5
-        self.high_low_wavelets = [] # inserted temporarily by JOHANNES to fix high-low problem
 
         # phase target parameters
         target_phase = target_phase % (2 * pi)
@@ -175,15 +174,9 @@ class PhaseTracker():
         self.ampbuffer[-1] = camp
         meanamp = self.ampbuffer.mean()
 
-        if self.high_low_analysis:
-
-            self.high_low_data[:-1] = self.high_low_data[1:]
-            self.high_low_data[-1] = hl_ratio
-            mean_hl_ratio = self.high_low_data.mean()
-
-        else:
-            
-            hl_ratio = 0
+        self.high_low_data[:-1] = self.high_low_data[1:]
+        self.high_low_data[-1] = hl_ratio
+        mean_hl_ratio = self.high_low_data.mean()
 
         internals = {
             'phase': phase,
@@ -305,22 +298,15 @@ class PhaseTracker():
                            np.imag(conv_vals[amp_max])) - (pi / 2)
         phase = phase % (2 * pi)
 
-        # inserted temporarily by JOHANNES to fix high-low problem
-
         ### high low ratio ###
-        if self.high_low_analysis:
+        # convolve the list of wavelets
+        conv_vals_hl = [np.dot(cdata, w) for w in self.high_low_wavelets]
 
-            # convolve the list of wavelets
-            conv_vals_hl = [np.dot(cdata, w) for w in self.high_low_wavelets]
+        # get average amplitude
+        hf_amp = np.mean(np.abs(conv_vals_hl))
 
-            # get average amplitude
-            hf_amp = np.mean(np.abs(conv_vals_hl))
-
-            # compute ratio and store
-            hl_ratio = hf_amp / np.mean(np.abs(conv_vals))
-        else:
-
-            hl_ratio = 0 # inserted temporarily by JOHANNES to fix high-low problem
+        # compute ratio and store
+        hl_ratio = hf_amp / np.mean(np.abs(conv_vals))
 
         ### determine if we're locked on ###
         est_phase = (np.arange(self.quadrature_sp) / self.fs) * freq * 2 * pi

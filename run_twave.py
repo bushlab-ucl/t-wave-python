@@ -11,10 +11,14 @@ from Algo_TWave import PhaseTracker as TWave
 
 # %%
 
+time_excerpt = 600 # seconds
+sampling_rate = 512 # hz
 ds = load_data_as_dataset(npy_path="/home/jhedemann/slow-wave/annotated/Patient03_Channel1_EEG.npy",
-                          fs=512)
-
-ds_trunc = ds.signal.squeeze().astype(float)
+                          fs=sampling_rate)
+if time_excerpt != 0:
+    ds_trunc = ds.signal.squeeze().astype(float)[:time_excerpt*sampling_rate]
+else:
+    ds_trunc = ds.signal.squeeze().astype(float)
 
 #%% 
 
@@ -37,7 +41,7 @@ rslt = Simulations.run_simulations(ds_sim, TWave(ds_sim.fs))
 
 # %%
 
-with open("results/results_twave_patient03_channel1_06_full_recording.pkl", "wb") as f:
+with open("results/results_twave_patient03_channel1_22_param_changed.pkl", "wb") as f:
     pickle.dump(rslt, f)
 
 # %%

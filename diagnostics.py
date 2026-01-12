@@ -10,9 +10,6 @@ from Simulations import PhaseTrackerStatus
 
 # %% LOAD DATA
 
-patient4 = np.load("/home/jhedemann/slow-wave//1024hz/Patient04_electrode01.npy")
-# patient4_mrk = np.load("/home/jhedemann/slow-wave/Patient02_OfflineMrk.mrk")
-
 with open("/home/jhedemann/slow-wave/1024hz/Patient04_OfflineMrk.mrk", "r", encoding="utf-8") as input_file:
     text = input_file.read()
 
@@ -20,29 +17,8 @@ patient03_channel1_eeg = np.load("/home/jhedemann/slow-wave/annotated/Patient03_
 patient03_channel1_sws = np.load("/home/jhedemann/slow-wave/annotated/Patient03_Channel1_SWs.npy")
 patient03_channel1_ieds = np.load("/home/jhedemann/slow-wave/annotated/Patient03_Channel1_IEDs.npy")
 
-with open("results/results_twave_patient03_channel1_06_full_recording.pkl", "rb") as f:
+with open("results/results_twave_patient03_channel1_12_hl_frequency_changed.pkl", "rb") as f:
     results_twave = pickle.load(f)
-
-# %% DO STUFF WITH LOADED DATA
-
-#print(patient4)
-print(patient4.shape)
-lines = text.splitlines()[1:]  # skip header
-print(lines)
-patient4_sw = np.array([int(line.split()[0]) / 1024 for line in lines if line.strip()])
-
-x_patient4 = np.arange(len(patient4))/1024
-
-# %% PLOT RAW EEG TRACE WITH GROUND TRUTH SLOW WAVE ANNOTATION
-
-plt.figure(figsize=(12,3))
-plt.vlines(patient4_sw, -7500, 7500, colors="red")
-plt.plot(x_patient4, patient4)
-
-
-plt.xlabel("time, seconds")
-plt.ylabel("EEG, microvolts")
-plt.show()
 
 # %% COMPUTE MEAN ABSOLUTE AMPLITUDE AROUND GROUND TRUTH SLOW WAVE VS NON-SLOW-WAVE
 
@@ -109,8 +85,8 @@ results_twave.plot_phase_hist()
 
 # %% PLOT PHASE ESTIMATE HISTOGRAM AT GROUND TRUTH SLOW WAVE INDICES
 
-# sw_idx_trunc = np.asarray([i for i in sw_idx if i <= 300*512])
-sw_idx_trunc = sw_idx
+sw_idx_trunc = np.array([i for i in sw_idx if i/results_twave.Dataset.fs <= results_twave.Dataset.t.max()])
+
 internals = results_twave.internals_ts
 
 sw_phases = np.array([
@@ -162,3 +138,18 @@ print(results_twave.status_ts[:50])
 
 for i in arr_sw_trunc:
     print(results_twave.status_ts[int(i)].name)
+    
+# %% INVESTIGATE hl_ratio
+
+#print(results_twave.internals_ts)
+internals = results_twave.internals_ts
+
+hl_ratios = []
+for i in range(len(internals)):
+    hl_ratios.append(internals[i]["hl_ratio"])
+hl_ratios = np.array(hl_ratios)
+print(len(hl_ratios))
+print(hl_ratios[:20])
+
+print(np.sum(hl_ratios))
+# %%

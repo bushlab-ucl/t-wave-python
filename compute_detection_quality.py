@@ -10,7 +10,7 @@ import Simulations
 # %% PREP
 
 # Parse simulation results file
-with open("results/results_twave_patient03_channel1_03.pkl", "rb") as f:
+with open("results/results_twave_patient03_channel1_21_param_changed.pkl", "rb") as f:
     results_twave = pickle.load(f)
 
 # Parse ground_truth npy files

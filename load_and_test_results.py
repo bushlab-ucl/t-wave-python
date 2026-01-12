@@ -10,7 +10,7 @@ from Simulations import PhaseTrackerStatus
 
 # %% LOAD DATA
 
-with open("results/results_twave_patient03_channel1_06_full_recording.pkl", "rb") as f:
+with open("results/results_twave_patient03_channel1_22_param_changed.pkl", "rb") as f:
     results_twave = pickle.load(f)
 
 # %% SHOW MASTER PLOT OF RESULTS WITH GROUND TRUTH ANNOTATION
@@ -25,3 +25,4 @@ print(len(results_twave.stims_sp))
 print(np.diff(results_twave.Dataset.t)*results_twave.Dataset.fs)
 
 print(results_twave.Dataset.t.max())
+# %%
