@@ -239,7 +239,7 @@ fig, axs = plt.subplots(1, 2, figsize=(15, 5))
 cf = axs[0].contourf(
     np.linspace(0, time_excerpt, power_total.shape[1]),  # time axis
     freq_range,                                     # frequency axis
-    power_total,                                          # (freq x time)
+    np.log(power_total),                                          # (freq x time)
     levels=50,
     cmap="viridis",
 )
@@ -257,18 +257,31 @@ plt.show()
 
 # %%
 
+# create global value range
+all_values = np.concatenate([base_correct_ieds.ravel(), base_correct_sws.ravel()])
+min_val = np.min(all_values)
+max_val = np.max(all_values)
+
+# center value range around 0
+limit = max(abs(min_val), abs(max_val))
+vmin, vmax = -limit, limit
+
+levels = np.linspace(vmin, vmax, 50)
+
 fig, axs = plt.subplots(1, 2, figsize=(10, 5))
 
 ied_cf = axs[0].contourf(np.linspace(-4, 4, base_correct_ieds.shape[1]), # time axis
                       freq_range, # frequency axis
                       base_correct_ieds, # (freq x time)
-                      levels=50,
+                      levels=levels,
+                      vmin=vmin, vmax=vmax,
                       cmap="viridis")
 
 sw_cf = axs[1].contourf(np.linspace(-4, 4, base_correct_sws.shape[1]), # time axis
                       freq_range, # frequency axis
                       base_correct_sws, # (freq x time)
-                      levels=50,
+                      levels=levels,
+                      vmin=vmin, vmax=vmax,
                       cmap="viridis")
 
 axs[0].set_xlabel("Time (s)")
@@ -279,12 +292,10 @@ axs[1].set_xlabel("Time (s)")
 axs[1].set_ylabel("Frequency (Hz)")
 axs[1].set_title("SWs")
 
-fig.colorbar(ied_cf, ax=axs[0], label="Power")
-fig.colorbar(sw_cf, ax=axs[1], label="Power")
+# fig.colorbar(ied_cf, ax=axs[0], label="Power")
+# fig.colorbar(sw_cf, ax=axs[1], label="Power")
+
+fig.colorbar(sw_cf, ax=axs, label="Log Power Ratio (Event / Baseline)")
 
 plt.show()
 
-
-# %%
-
-# %%
