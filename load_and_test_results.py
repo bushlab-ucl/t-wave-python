@@ -15,8 +15,8 @@ with open("results/results_twave_patient03_channel1_22_param_changed.pkl", "rb")
 
 # %% SHOW MASTER PLOT OF RESULTS WITH GROUND TRUTH ANNOTATION
 
-results_twave.plot_timeseries(ground_truth_sw="/home/jhedemann/slow-wave/annotated/Patient03_Channel1_SWs.npy",
-                              ground_truth_ied="/home/jhedemann/slow-wave/annotated/Patient03_Channel1_IEDs.npy")
+results_twave.plot_timeseries(ground_truth_sw="/home/jhedemann/ptas_benchmarks_jhedemann/data/annotated/Patient03_Channel1_SWs.npy",
+                              ground_truth_ied="/home/jhedemann/ptas_benchmarks_jhedemann/data/annotated/Patient03_Channel1_IEDs.npy")
 plt.show()
 
 

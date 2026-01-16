@@ -47,5 +47,3 @@ with open("results/results_twave_patient03_channel1_22_param_changed.pkl", "wb")
 # %%
 
 print(rslt.stims_sp)
-
-# %%

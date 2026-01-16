@@ -73,7 +73,7 @@ def load_sw_annotation(npy_path):
 
 # %%
 
-ds = load_data_as_dataset("/home/jhedemann/slow-wave/1024hz/Patient04_electrode01.npy", fs=1024)
+ds = load_data_as_dataset("/home/jhedemann/ptas_benchmarks_jhedemann/data/annotated/Patient03_Channel1_EEG.npy", fs=1024)
 print(ds.name, ds.fs, ds.signal.shape, ds.signal.min(), ds.signal.max())
 
 # %%
@@ -85,7 +85,7 @@ print("p99(|x|):", np.percentile(np.abs(x), 99))
 print("min/max:", x.min(), x.max())
 
 # %%
-path_sw_annot = "/home/jhedemann/slow-wave/annotated/Patient03_Channel1_SWs.npy"
+path_sw_annot = "/home/jhedemann/ptas_benchmarks_jhedemann/data/annotated/Patient03_Channel1_SWs.npy"
 
 arr_sw_annot = load_sw_annotation(path_sw_annot)
 
