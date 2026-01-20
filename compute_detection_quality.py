@@ -5,17 +5,18 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 
+from Algo_ZeroCrossing import RollingQuantileThreshold
 import Simulations
 
 # %% PREP
 
 # Parse simulation results file
-with open("results/results_twave_patient03_channel1_21_param_changed.pkl", "rb") as f:
+with open("results/results_zerocross_patient03_channel1_14_newdynamic.pkl", "rb") as f:
     results_twave = pickle.load(f)
 
 # Parse ground_truth npy files
-path_sw = Path("/home/jhedemann/slow-wave/annotated/Patient03_Channel1_SWs.npy")
-path_ied = Path("/home/jhedemann/slow-wave/annotated/Patient03_Channel1_IEDs.npy")
+path_sw = Path("data/annotated/Patient03_Channel1_negSWs.npy")
+path_ied = Path("data/annotated/Patient03_Channel1_IEDs.npy")
 
 arr_sw = np.load(path_sw)
 arr_ied = np.load(path_ied)

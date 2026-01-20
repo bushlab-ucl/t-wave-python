@@ -163,139 +163,138 @@ def get_signal_subsets_from_intervals(signal, intervals):
         
     return np.array(signal_subsets)
 
+if __name__ == "__main__":
+    # %% PREPARE DATA
 
-# %% PREPARE DATA
+    filtered_arr_ied, filtered_arr_sws = filter_for_competing_events(arr_ied_trunc, arr_sw_trunc, buffer_s=4)
 
-filtered_arr_ied, filtered_arr_sws = filter_for_competing_events(arr_ied_trunc, arr_sw_trunc, buffer_s=4)
+    ied_maxima = find_maxima(ds_trunc, filtered_arr_ied, sampling_rate, 4, low_pass=4)
+    ied_subsets = get_signal_subsets_from_events(ds_trunc, ied_maxima, sampling_rate, 4)
+    ied_subsets = np.expand_dims(ied_subsets, axis=1)
 
-ied_maxima = find_maxima(ds_trunc, filtered_arr_ied, sampling_rate, 4, low_pass=4)
-ied_subsets = get_signal_subsets_from_events(ds_trunc, ied_maxima, sampling_rate, 4)
-ied_subsets = np.expand_dims(ied_subsets, axis=1)
+    sw_maxima = find_maxima(ds_trunc, filtered_arr_sws, sampling_rate, 4, low_pass=4)
+    sw_subsets = get_signal_subsets_from_events(ds_trunc, sw_maxima, sampling_rate, 4)
+    sw_subsets = np.expand_dims(sw_subsets, axis=1)
 
-sw_maxima = find_maxima(ds_trunc, filtered_arr_sws, sampling_rate, 4, low_pass=4)
-sw_subsets = get_signal_subsets_from_events(ds_trunc, sw_maxima, sampling_rate, 4)
-sw_subsets = np.expand_dims(sw_subsets, axis=1)
+    total_intervals = find_empty_windows(sw_times=arr_sw_trunc,
+                                ied_times=arr_ied_trunc,
+                                fs=sampling_rate,
+                                windows_size_s=8,
+                                empty_space_s=12,
+                                n_windows=max((len(arr_sw_trunc), len(arr_ied_trunc))))
 
-total_intervals = find_empty_windows(sw_times=arr_sw_trunc,
-                               ied_times=arr_ied_trunc,
-                               fs=sampling_rate,
-                               windows_size_s=8,
-                               empty_space_s=12,
-                               n_windows=max((len(arr_sw_trunc), len(arr_ied_trunc))))
+    signal_without_events = get_signal_subsets_from_intervals(signal=ds_trunc,
+                                                            intervals=total_intervals)
+    signal_without_events = np.expand_dims(signal_without_events, axis=1)
 
-signal_without_events = get_signal_subsets_from_intervals(signal=ds_trunc,
-                                                          intervals=total_intervals)
-signal_without_events = np.expand_dims(signal_without_events, axis=1)
+    # %% TIME FREQUENCY ANALYSIS
 
-# %% TIME FREQUENCY ANALYSIS
+    tfr_signal_total = mne.time_frequency.tfr_array_morlet(data=ds_tfr_reshape,
+                                                        sfreq=sampling_rate,
+                                                        freqs=freq_range,
+                                                        n_cycles=5,
+                                                        verbose=True)
 
-tfr_signal_total = mne.time_frequency.tfr_array_morlet(data=ds_tfr_reshape,
-                                                       sfreq=sampling_rate,
-                                                       freqs=freq_range,
-                                                       n_cycles=5,
-                                                       verbose=True)
+    tf_total = tfr_signal_total[0,0,:,:]
+    power_total = np.abs(tf_total) ** 2
 
-tf_total = tfr_signal_total[0,0,:,:]
-power_total = np.abs(tf_total) ** 2
+    tfr_signal_no_events = mne.time_frequency.tfr_array_morlet(data=signal_without_events,
+                                                            sfreq=sampling_rate,
+                                                            freqs=freq_range,
+                                                            n_cycles=5,
+                                                            verbose=True)
 
-tfr_signal_no_events = mne.time_frequency.tfr_array_morlet(data=signal_without_events,
-                                                           sfreq=sampling_rate,
-                                                           freqs=freq_range,
-                                                           n_cycles=5,
-                                                           verbose=True)
+    tf_no_events = tfr_signal_no_events[:,0,:,:]
+    power_no_events = np.abs(tf_no_events) ** 2
+    avg_power_no_events = np.average(power_no_events, axis=(0,2))
+    avg_power_no_events = avg_power_no_events[:, np.newaxis]
 
-tf_no_events = tfr_signal_no_events[:,0,:,:]
-power_no_events = np.abs(tf_no_events) ** 2
-avg_power_no_events = np.average(power_no_events, axis=(0,2))
-avg_power_no_events = avg_power_no_events[:, np.newaxis]
+    tfr_signal_ieds = mne.time_frequency.tfr_array_morlet(data=ied_subsets,
+                                                        sfreq=sampling_rate,
+                                                        freqs=freq_range,
+                                                        n_cycles=5,
+                                                        verbose=True)
 
-tfr_signal_ieds = mne.time_frequency.tfr_array_morlet(data=ied_subsets,
-                                                      sfreq=sampling_rate,
-                                                      freqs=freq_range,
-                                                      n_cycles=5,
-                                                      verbose=True)
+    tf_ieds = tfr_signal_ieds[:,0,:,:]
+    power_ieds = np.abs(tf_ieds) ** 2
+    avg_power_ieds = np.average(power_ieds, axis=0)
 
-tf_ieds = tfr_signal_ieds[:,0,:,:]
-power_ieds = np.abs(tf_ieds) ** 2
-avg_power_ieds = np.average(power_ieds, axis=0)
+    tfr_signal_sws = mne.time_frequency.tfr_array_morlet(data=sw_subsets,
+                                                        sfreq=sampling_rate,
+                                                        freqs=freq_range,
+                                                        n_cycles=5,
+                                                        verbose=True)
 
-tfr_signal_sws = mne.time_frequency.tfr_array_morlet(data=sw_subsets,
-                                                     sfreq=sampling_rate,
-                                                     freqs=freq_range,
-                                                     n_cycles=5,
-                                                     verbose=True)
+    tf_sws = tfr_signal_sws[:,0,:,:]
+    power_sws = np.abs(tf_sws) ** 2
+    avg_power_sws = np.average(power_sws, axis=0)
 
-tf_sws = tfr_signal_sws[:,0,:,:]
-power_sws = np.abs(tf_sws) ** 2
-avg_power_sws = np.average(power_sws, axis=0)
+    base_correct_ieds = np.log(avg_power_ieds) - np.log(avg_power_no_events)
+    base_correct_sws = np.log(avg_power_sws) - np.log(avg_power_no_events)
 
-base_correct_ieds = np.log(avg_power_ieds) - np.log(avg_power_no_events)
-base_correct_sws = np.log(avg_power_sws) - np.log(avg_power_no_events)
-
-# %% PLOTS
-fig, axs = plt.subplots(1, 2, figsize=(15, 5))
+    # %% PLOTS
+    fig, axs = plt.subplots(1, 2, figsize=(15, 5))
 
 
-cf = axs[0].contourf(
-    np.linspace(0, time_excerpt, power_total.shape[1]),  # time axis
-    freq_range,                                     # frequency axis
-    np.log(power_total),                                          # (freq x time)
-    levels=50,
-    cmap="viridis",
-)
+    cf = axs[0].contourf(
+        np.linspace(0, time_excerpt, power_total.shape[1]),  # time axis
+        freq_range,                                     # frequency axis
+        np.log(power_total),                                          # (freq x time)
+        levels=50,
+        cmap="viridis",
+    )
 
-[axs[0].axvline(sw, 0.25, 0.5, color="white", alpha=0.2) for sw in arr_sw_trunc]
-[axs[0].axvline(ied, 0.25, 0.5, color="red", alpha=1) for ied in arr_ied_trunc]
-axs[0].set_xlabel("Time (s)")
-axs[0].set_ylabel("Frequency (Hz)")
+    [axs[0].axvline(sw, 0.25, 0.5, color="white", alpha=0.2) for sw in arr_sw_trunc]
+    [axs[0].axvline(ied, 0.25, 0.5, color="red", alpha=1) for ied in arr_ied_trunc]
+    axs[0].set_xlabel("Time (s)")
+    axs[0].set_ylabel("Frequency (Hz)")
 
-fig.colorbar(cf, ax=axs[0], label="Power")
+    fig.colorbar(cf, ax=axs[0], label="Power")
 
-axs[1].psd(x=ds_trunc, Fs=sampling_rate)
+    axs[1].psd(x=ds_trunc, Fs=sampling_rate)
 
-plt.show()
+    plt.show()
 
-# %%
+    # %%
 
-# create global value range
-all_values = np.concatenate([base_correct_ieds.ravel(), base_correct_sws.ravel()])
-min_val = np.min(all_values)
-max_val = np.max(all_values)
+    # create global value range
+    all_values = np.concatenate([base_correct_ieds.ravel(), base_correct_sws.ravel()])
+    min_val = np.min(all_values)
+    max_val = np.max(all_values)
 
-# center value range around 0
-limit = max(abs(min_val), abs(max_val))
-vmin, vmax = -limit, limit
+    # center value range around 0
+    limit = max(abs(min_val), abs(max_val))
+    vmin, vmax = -limit, limit
 
-levels = np.linspace(vmin, vmax, 50)
+    levels = np.linspace(vmin, vmax, 50)
 
-fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+    fig, axs = plt.subplots(1, 2, figsize=(10, 5))
 
-ied_cf = axs[0].contourf(np.linspace(-4, 4, base_correct_ieds.shape[1]), # time axis
-                      freq_range, # frequency axis
-                      base_correct_ieds, # (freq x time)
-                      levels=levels,
-                      vmin=vmin, vmax=vmax,
-                      cmap="viridis")
+    ied_cf = axs[0].contourf(np.linspace(-4, 4, base_correct_ieds.shape[1]), # time axis
+                        freq_range, # frequency axis
+                        base_correct_ieds, # (freq x time)
+                        levels=levels,
+                        vmin=vmin, vmax=vmax,
+                        cmap="viridis")
 
-sw_cf = axs[1].contourf(np.linspace(-4, 4, base_correct_sws.shape[1]), # time axis
-                      freq_range, # frequency axis
-                      base_correct_sws, # (freq x time)
-                      levels=levels,
-                      vmin=vmin, vmax=vmax,
-                      cmap="viridis")
+    sw_cf = axs[1].contourf(np.linspace(-4, 4, base_correct_sws.shape[1]), # time axis
+                        freq_range, # frequency axis
+                        base_correct_sws, # (freq x time)
+                        levels=levels,
+                        vmin=vmin, vmax=vmax,
+                        cmap="viridis")
 
-axs[0].set_xlabel("Time (s)")
-axs[0].set_ylabel("Frequency (Hz)")
-axs[0].set_title("IEDs")
+    axs[0].set_xlabel("Time (s)")
+    axs[0].set_ylabel("Frequency (Hz)")
+    axs[0].set_title("IEDs")
 
-axs[1].set_xlabel("Time (s)")
-axs[1].set_ylabel("Frequency (Hz)")
-axs[1].set_title("SWs")
+    axs[1].set_xlabel("Time (s)")
+    axs[1].set_ylabel("Frequency (Hz)")
+    axs[1].set_title("SWs")
 
-# fig.colorbar(ied_cf, ax=axs[0], label="Power")
-# fig.colorbar(sw_cf, ax=axs[1], label="Power")
+    # fig.colorbar(ied_cf, ax=axs[0], label="Power")
+    # fig.colorbar(sw_cf, ax=axs[1], label="Power")
 
-fig.colorbar(sw_cf, ax=axs, label="Log Power Ratio (Event / Baseline)")
+    fig.colorbar(sw_cf, ax=axs, label="Log Power Ratio (Event / Baseline)")
 
-plt.show()
-
+    plt.show()

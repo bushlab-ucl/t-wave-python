@@ -90,14 +90,17 @@ class SimulationResult():
         else:
             time_mask = slice(None)  # This allows slicing the full array
 
-        # Design the filter.
-        butter_filt = scipy.signal.butter(2, [0.5, 4],
-                                          'bandpass',
-                                          fs=self.Dataset.fs)
+        # # Design the filter.
+        # butter_filt = scipy.signal.butter(2, [0.5, 4],
+        #                                   'bandpass',
+        #                                   fs=self.Dataset.fs)
 
-        # Filter only the data within the time range.
-        filtered_signal = scipy.signal.filtfilt(butter_filt[0], butter_filt[1],
-                                                self.Dataset.signal[time_mask])
+        # # Filter only the data within the time range.
+        # filtered_signal = scipy.signal.filtfilt(butter_filt[0], butter_filt[1],
+        #                                         self.Dataset.signal[time_mask])
+        
+        sos = scipy.signal.butter(4, [0.5, 4.0], btype="bandpass", fs=self.Dataset.fs, output="sos")
+        filtered_signal = scipy.signal.sosfiltfilt(sos, self.Dataset.signal[time_mask])
 
         # # Parse ground-truth markdown file
         # with open(ground_truth, "r", encoding="utf-8") as input_file:

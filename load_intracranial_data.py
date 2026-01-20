@@ -70,23 +70,24 @@ def load_sw_annotation(npy_path):
     print(arr)
     return arr 
 
+if __name__ == "__main__":
+    # %%
 
-# %%
+    ds = load_data_as_dataset("/home/jhedemann/ptas_benchmarks_jhedemann/data/annotated/Patient03_Channel1_EEG.npy", fs=1024)
+    print(ds.name, ds.fs, ds.signal.shape, ds.signal.min(), ds.signal.max())
 
-ds = load_data_as_dataset("/home/jhedemann/ptas_benchmarks_jhedemann/data/annotated/Patient03_Channel1_EEG.npy", fs=1024)
-print(ds.name, ds.fs, ds.signal.shape, ds.signal.min(), ds.signal.max())
+    # %%
 
-# %%
+    x = ds.signal.squeeze()
+    print("median(|x|):", np.median(np.abs(x)))
+    print("p95(|x|):", np.percentile(np.abs(x), 95))
+    print("p99(|x|):", np.percentile(np.abs(x), 99))
+    print("min/max:", x.min(), x.max())
 
-x = ds.signal.squeeze()
-print("median(|x|):", np.median(np.abs(x)))
-print("p95(|x|):", np.percentile(np.abs(x), 95))
-print("p99(|x|):", np.percentile(np.abs(x), 99))
-print("min/max:", x.min(), x.max())
+    # %%
+    path_sw_annot = "/home/jhedemann/ptas_benchmarks_jhedemann/data/annotated/Patient03_Channel1_negSWs.npy"
 
-# %%
-path_sw_annot = "/home/jhedemann/ptas_benchmarks_jhedemann/data/annotated/Patient03_Channel1_SWs.npy"
+    arr_sw_annot = load_sw_annotation(path_sw_annot)
+    print(arr_sw_annot.shape)
 
-arr_sw_annot = load_sw_annotation(path_sw_annot)
-
-# %%
+    # %%

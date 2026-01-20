@@ -10,14 +10,11 @@ from Simulations import PhaseTrackerStatus
 
 # %% LOAD DATA
 
-with open("/home/jhedemann/slow-wave/1024hz/Patient04_OfflineMrk.mrk", "r", encoding="utf-8") as input_file:
-    text = input_file.read()
+patient03_channel1_eeg = np.load("data/annotated/Patient03_Channel1_EEG.npy")
+patient03_channel1_sws = np.load("data/annotated/Patient03_Channel1_negSWs.npy")
+patient03_channel1_ieds = np.load("data/annotated/Patient03_Channel1_IEDs.npy")
 
-patient03_channel1_eeg = np.load("/home/jhedemann/slow-wave/annotated/Patient03_Channel1_EEG.npy")
-patient03_channel1_sws = np.load("/home/jhedemann/slow-wave/annotated/Patient03_Channel1_SWs.npy")
-patient03_channel1_ieds = np.load("/home/jhedemann/slow-wave/annotated/Patient03_Channel1_IEDs.npy")
-
-with open("results/results_twave_patient03_channel1_12_hl_frequency_changed.pkl", "rb") as f:
+with open("results/results_zerocross_patient03_channel1_08_newbackoff_sp.pkl", "rb") as f:
     results_twave = pickle.load(f)
 
 # %% COMPUTE MEAN ABSOLUTE AMPLITUDE AROUND GROUND TRUTH SLOW WAVE VS NON-SLOW-WAVE
@@ -124,8 +121,8 @@ print("BACKOFF_ISI:", count(PhaseTrackerStatus.BACKOFF_ISI))
 print(len(results_twave.status_ts))
 print(PhaseTrackerStatus.STIM1)
 
-path_sw = Path("/home/jhedemann/slow-wave/annotated/Patient03_Channel1_SWs.npy")
-path_ied = Path("/home/jhedemann/slow-wave/annotated/Patient03_Channel1_IEDs.npy")
+path_sw = Path("data/annotated/Patient03_Channel1_negSWs.npy")
+path_ied = Path("data/annotated/Patient03_Channel1_IEDs.npy")
 
 arr_sw = np.load(path_sw)
 arr_ied = np.load(path_ied)
