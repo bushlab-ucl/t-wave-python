@@ -196,12 +196,17 @@ def do_event_tfr_on_all(in_dir: str,
 
     p_c_struct = get_p_c_struct(in_dir)
     all_ps_tfr = []
+    all_ps_sw_signals = []
+    all_ps_ied_signals = []
 
     for p, cs in p_c_struct.items():
 
         this_p_sw_powers = []
         this_p_ied_powers = []
         this_p_non_powers = []
+
+        this_p_sw_signals = []
+        this_p_ied_signals = []
 
         for c in cs:
 
@@ -216,7 +221,7 @@ def do_event_tfr_on_all(in_dir: str,
 
             dataset = load_data_as_dataset(signal_filepath, fs=fs)
 
-            signal = dataset.raw_signal
+            signal = dataset.signal
 
             arr_sws = np.load(sws_filepath)
             arr_ieds = np.load(ieds_filepath)
@@ -227,9 +232,12 @@ def do_event_tfr_on_all(in_dir: str,
             sw_subsets = get_signal_subsets_from_events(signal, sw_minima, fs, window_size_s)
             sw_input = np.expand_dims(sw_subsets, axis=1)
 
-            ied_maxima = find_maxima(signal, filtered_arr_ied, fs, window_size_s, low_pass_filter_freq)
+            ied_maxima = find_minima(signal, filtered_arr_ied, fs, window_size_s, low_pass_filter_freq)
             ied_subsets = get_signal_subsets_from_events(signal, ied_maxima, fs, window_size_s)
             ied_input = np.expand_dims(ied_subsets, axis=1)
+
+            this_p_sw_signals.append(sw_subsets)
+            this_p_ied_signals.append(ied_subsets)
 
             total_intervals = find_empty_windows(sw_times=arr_sws,
                                         ied_times=arr_ieds,
@@ -271,6 +279,8 @@ def do_event_tfr_on_all(in_dir: str,
             else:
                 print(f"Skipping baseline TFR for P{p} C{c}: No events found.")
 
+        all_ps_sw_signals.append(this_p_sw_signals)
+        all_ps_ied_signals.append(this_p_ied_signals)
 
         this_p_avg_sw = np.mean(np.array(this_p_sw_powers), axis=0)
         this_p_avg_ied = np.mean(np.array(this_p_ied_powers), axis=0)
@@ -292,7 +302,9 @@ def do_event_tfr_on_all(in_dir: str,
         np.savez_compressed(
             output_path, 
             sw_tfr=final_sw_tfr, 
-            ied_tfr=final_ied_tfr, 
+            ied_tfr=final_ied_tfr,
+            sw_signal=np.array(this_p_sw_signals, dtype=object),
+            ied_signal=np.array(this_p_ied_signals, dtype=object),
             freqs=freq_range,
             p_id=p
         )
@@ -316,13 +328,15 @@ def load_tfr_results(tfr_dir):
         path = os.path.join(tfr_dir, filename)
         
         # 'with' ensures the file is closed after loading
-        with np.load(path) as data:
+        with np.load(path, allow_pickle=True) as data:
             # Reconstruct the dictionary format
             # Using .copy() ensures the data is in RAM, not just a file pointer
             p_dict = {
                 "p_id": str(data['p_id']),
                 "sw_tfr": data['sw_tfr'].copy() if 'sw_tfr' in data else None,
-                "ied_tfr": data['ied_tfr'].copy() if 'ied_tfr' in data else None
+                "ied_tfr": data['ied_tfr'].copy() if 'ied_tfr' in data else None,
+                "sw_signal": data['sw_signal'].copy() if 'sw_signal' in data else None,
+                "ied_signal": data['ied_signal'].copy() if 'ied_signal' in data else None
             }
             all_results.append(p_dict)
             
@@ -338,6 +352,9 @@ def plot_single_tfr(p_results, freq_range, window_size_s=4):
     ied_data = p_results['ied_tfr']
     p_id = p_results.get('p_id', 'Unknown')
 
+    sw_waveforms = np.array(p_results['sw_signal'], dtype=np.float64)
+    ied_waveforms = np.array(p_results['ied_signal'], dtype=np.float64)
+
     # Global range for shared colorbar
     limit = max(np.abs(np.nanmin([sw_data, ied_data])), 
                 np.abs(np.nanmax([sw_data, ied_data])))
@@ -352,13 +369,30 @@ def plot_single_tfr(p_results, freq_range, window_size_s=4):
     axs[1] = ax2
 
     # Plot IEDs
+
+    mean_ied_waveform = np.mean(ied_waveforms, axis=0)
+    std_ied_waveform = np.std(ied_waveforms, axis=0)
+
     im0 = axs[0].contourf(time_axis, freq_range, ied_data, levels=levels, 
                           vmin=vmin, vmax=vmax, cmap="RdBu_r")
+    wvfrm0 = axs[0].twinx()
+    wvfrm0.fill_between(time_axis, mean_ied_waveform - std_ied_waveform, mean_ied_waveform + std_ied_waveform,
+                        color="black", alpha=0.05)
+    wvfrm0.plot(time_axis, mean_ied_waveform, color="black", alpha=0.3)
     axs[0].set_title(f"Patient {p_id}: IEDs")
 
     # Plot SWs
+
+    mean_sw_waveform = np.mean(sw_waveforms, axis=0)
+    std_sw_waveform = np.std(sw_waveforms, axis=0)
+
     im1 = axs[1].contourf(time_axis, freq_range, sw_data, levels=levels, 
                           vmin=vmin, vmax=vmax, cmap="RdBu_r")
+    wvfrm1 = axs[1].twinx()
+    wvfrm1.fill_between(time_axis, mean_sw_waveform - std_sw_waveform, mean_sw_waveform + std_sw_waveform,
+                    color="black", alpha=0.05)
+    wvfrm1.plot(time_axis, mean_sw_waveform, color="black", alpha=0.3)
+    
     axs[1].set_title(f"Patient {p_id}: Slow Waves")
 
     for ax in axs:
@@ -377,6 +411,8 @@ def get_grand_average_data(all_ps_results, freq_range):
     """
     sw_list = [res['sw_tfr'] for res in all_ps_results if res['sw_tfr'] is not None]
     ied_list = [res['ied_tfr'] for res in all_ps_results if res['ied_tfr'] is not None]
+    sw_signal = [res['sw_signal'] for res in all_ps_results if res['sw_signal'] is not None]
+    ied_signal = [res['ied_signal'] for res in all_ps_results if res['ied_signal'] is not None]
 
     # Re-using your robust averaging logic
     def calculate_robust_average(data_list):
@@ -391,11 +427,30 @@ def get_grand_average_data(all_ps_results, freq_range):
             sum_array[:f_limit, :t_limit] += arr[:f_limit, :t_limit]
             count += 1
         return sum_array / count if count > 0 else None
+    
+    def unravel_nested_signals(signal_list):
+        # Flatten the nested structure: Patients -> Channels -> Events -> Samples
+        flat_list = []
+        for p_data in signal_list:       # p_data is a list of channel data
+            for c_data in p_data:       # c_data is a (n_events, n_samples) array
+                if len(c_data) > 0:
+                    flat_list.append(c_data)
+        
+        if not flat_list:
+            return np.zeros(4096) # Default length if no data
+            
+        # Stack all events from all patients/channels into one big (TotalEvents, 4096) array
+        all_events_combined = np.vstack(flat_list)
+        
+        # Mean across all events to get a 1D (4096,) waveform
+        return all_events_combined
 
     grand_avg_results = {
         'p_id': 'GRAND AVERAGE',
         'sw_tfr': calculate_robust_average(sw_list),
-        'ied_tfr': calculate_robust_average(ied_list)
+        'ied_tfr': calculate_robust_average(ied_list),
+        'sw_signal': unravel_nested_signals(sw_signal),
+        'ied_signal': unravel_nested_signals(ied_signal),
     }
     return grand_avg_results
 
@@ -444,17 +499,17 @@ if __name__ == "__main__":
 
     freq_range=np.linspace(start=1, stop=200, num=50)
 
-    # # %% TFR ON ALL DATA
+    # %% TFR ON ALL DATA
 
     # all_ps_tfr_dict = do_event_tfr_on_all(
     #     in_dir="data/annotated",
     #     freq_range=freq_range,
-    #     out_dir="tfr/align_minima"
+    #     out_dir="tfr/align_minima_both"
     #     )
 
     # %%
 
-    results_list = load_tfr_results("tfr/align_minima")
+    results_list = load_tfr_results("tfr/align_minima_both")
 
     # 2. Compute the Grand Average Data ONCE
     grand_avg = get_grand_average_data(results_list, freq_range)
