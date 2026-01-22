@@ -338,4 +338,101 @@ for val in amp_values:
     
     print(f"{val:<12} | {sw_p:>10.2f}% | {ied_p:>10.2f}%")
 
+# %% COMPUTE MIN AMPLITUDES AT EVENTS AND MAX AMPLITUDE BEFORE
+
+data_dir = "data/annotated"
+
+p_c_struct = get_p_c_struct(data_dir)
+
+min_max_amps_sw = []
+min_max_amps_ied = []
+
+
+for p, cs in p_c_struct.items():
+
+    for c in cs:
+       
+        # load data
+        signal_filename = f"Patient{p}_Channel{c}_EEG.npy"
+        signal_filepath = os.path.join(data_dir, signal_filename)
+
+        sws_filename = f"Patient{p}_Channel{c}_negSWs.npy"
+        sws_filepath = os.path.join(data_dir, sws_filename)
+
+        ieds_filename = f"Patient{p}_Channel{c}_IEDs.npy"
+        ieds_filepath = os.path.join(data_dir, ieds_filename)
+
+        dataset = load_data_as_dataset(signal_filepath, fs=512)
+
+        signal = dataset.signal
+
+        arr_sws = np.load(sws_filepath)
+        arr_ieds = np.load(ieds_filepath)
+
+        # filter for competing events
+        filtered_arr_ied, filtered_arr_sw = filter_for_competing_events(arr_ieds, arr_sws, buffer_s=4)
+        
+        # find minima of sws
+        sw_minima = find_minima(signal, filtered_arr_sw, fs=512, window_size_s=4, low_pass=4)
+        sw_minima = sw_minima.astype(int)
+
+        segments = [signal[max(0, time - 1024) : time] for time in sw_minima]
+        max_amps = [np.max(seg) if seg.size > 0 else 0 for seg in segments]
+        min_amps = signal[sw_minima]
+        
+        min_max_amps_sw.extend(zip(min_amps, max_amps))
+
+        # find minima of ieds
+        ied_minima = find_minima(signal, filtered_arr_ied, fs=512, window_size_s=4, low_pass=4)
+        ied_minima = ied_minima.astype(int)
+
+        segments = [signal[max(0, time - 1024) : time] for time in ied_minima]
+        max_amps = [np.max(seg) if seg.size > 0 else 0 for seg in segments]
+        min_amps = signal[ied_minima]
+        
+        min_max_amps_ied.extend(zip(min_amps, max_amps))
+
+min_max_amps_sw = np.asarray(min_max_amps_sw)
+min_max_amps_ied = np.asarray(min_max_amps_ied)
+#%% unite cells later
+amp_diffs_sw = np.array([(pair[0], pair[1], pair[1]-pair[0]) for pair in min_max_amps_sw])
+amp_diffs_ied = np.array([(pair[0], pair[1], pair[1]-pair[0]) for pair in min_max_amps_ied])
+print(np.mean(amp_diffs_sw[:,2]))
+print(np.mean(amp_diffs_ied[:,2]))
+#%% unite cells laer
+
+plt.scatter(min_max_amps_sw[:,1], min_max_amps_sw[:,0])
+# plt.hist(max_amps_sw, bins=50, alpha=0.3, density=True, label="SW pos amps")
+# plt.legend()
+plt.show()
+
+print(np.corrcoef(min_max_amps_sw[:,1], min_max_amps_sw[:,0]))
+print(np.corrcoef(min_max_amps_ied[:,1], min_max_amps_ied[:,0]))
+#%% unite cells later
+
+ratio_min_max_sw = np.array([abs(pair[0])/pair[1] for pair in min_max_amps_sw])
+clean_ratios_sw = ratio_min_max_sw[ratio_min_max_sw < 20]
+
+print(f"Cleaned Mean: {np.mean(clean_ratios_sw):.3f}")
+print(f"Cleaned STD: {np.std(clean_ratios_sw):.3f}")
+print(f"SW Median: {np.median(ratio_min_max_sw):.3f}")
+print(f"SW IQR: {np.percentile(ratio_min_max_sw, 75) - np.percentile(ratio_min_max_sw, 25):.3f}")
+
+ratio_min_max_ied = np.array([abs(pair[0])/pair[1] for pair in min_max_amps_ied])
+# IED Statistics
+print(f"Cleaned Mean: {np.mean(ratio_min_max_ied):.3f}")
+print(f"Cleaned STD: {np.std(ratio_min_max_ied):.3f}")
+print(f"IED Median: {np.median(ratio_min_max_ied):.3f}")
+print(f"IED IQR: {np.percentile(ratio_min_max_ied, 75) - np.percentile(ratio_min_max_ied, 25):.3f}")
+
 # %%
+
+# Calculate the 'steepness' of the drop
+# Assuming fs=512, look at the change over 10 samples (~20ms)
+sw_slopes = [np.min(np.diff(signal[idx-10 : idx+1])) for idx in sw_minima]
+ied_slopes = [np.min(np.diff(signal[idx-10 : idx+1])) for idx in ied_minima]
+
+print(f"SW Median Slope: {np.median(sw_slopes)}")
+print(f"IED Median Slope: {np.median(ied_slopes)}")
+# %%
+
