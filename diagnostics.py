@@ -8,6 +8,7 @@ import Simulations
 from Simulations import PhaseTrackerStatus
 import os
 from scipy import stats
+from scipy.signal import butter, sosfiltfilt
 
 from analyze_time_frequency import get_p_c_struct, filter_for_competing_events, find_minima, find_maxima
 from load_intracranial_data import load_data_as_dataset
@@ -22,6 +23,11 @@ patient03_channel1_ieds = np.load("data/annotated/Patient03_Channel1_IEDs.npy")
 with open("results/results_zerocross_patient03_channel1_08_newbackoff_sp.pkl", "rb") as f:
     results_twave = pickle.load(f)
 
+data_dir = "data/annotated"
+p_c_struct = get_p_c_struct(data_dir)
+run_dir = "results/run_all/run11"
+fs = 512
+
 # %% COMPUTE MEAN ABSOLUTE AMPLITUDE AROUND GROUND TRUTH SLOW WAVE VS NON-SLOW-WAVE
 
 def index_mask(slow_wave_idx, signal_length, window=512):
@@ -35,8 +41,8 @@ def index_mask(slow_wave_idx, signal_length, window=512):
 
     return mask
 
-sw_idx = (patient03_channel1_sws*512).astype(int)
-ied_idx = (patient03_channel1_ieds*512).astype(int)
+sw_idx = (patient03_channel1_sws*fs).astype(int)
+ied_idx = (patient03_channel1_ieds*fs).astype(int)
 
 sw_idx_mask = index_mask(sw_idx, len(patient03_channel1_eeg), window=512)
 ied_idx_mask = index_mask(ied_idx, len(patient03_channel1_eeg), window=512)
@@ -156,9 +162,6 @@ print(hl_ratios[:20])
 print(np.sum(hl_ratios))
 # %% ANALYZE MINIMAL AMPLITUDE DISTRIBUTION OF IEDs vs SWs
 
-data_dir = "data/annotated"
-
-p_c_struct = get_p_c_struct(data_dir)
 min_amps_sw = []
 min_amps_ied = []
 
@@ -177,7 +180,7 @@ for p, cs in p_c_struct.items():
         ieds_filename = f"Patient{p}_Channel{c}_IEDs.npy"
         ieds_filepath = os.path.join(data_dir, ieds_filename)
 
-        dataset = load_data_as_dataset(signal_filepath, fs=512)
+        dataset = load_data_as_dataset(signal_filepath, fs=fs)
 
         signal = dataset.signal
 
@@ -188,10 +191,10 @@ for p, cs in p_c_struct.items():
         filtered_arr_ied, filtered_arr_sw = filter_for_competing_events(arr_ieds, arr_sws, buffer_s=4)
         
         # find minima of sws
-        sw_minima = find_minima(signal, filtered_arr_sw, fs=512, window_size_s=4, low_pass=4)
+        sw_minima = find_minima(signal, filtered_arr_sw, fs=fs, window_size_s=4, low_pass=4)
 
         # find minima of ieds
-        ied_minima = find_minima(signal, filtered_arr_ied, fs=512, window_size_s=4, low_pass=4)
+        ied_minima = find_minima(signal, filtered_arr_ied, fs=fs, window_size_s=4, low_pass=4)
 
         # compute amplitudes at minima
         this_min_amps_sw = signal[sw_minima]
@@ -204,12 +207,14 @@ for p, cs in p_c_struct.items():
 mean_min_amp_sw = np.mean(min_amps_sw)
 mean_min_amp_ied = np.mean(min_amps_ied)
 
-print(mean_min_amp_sw, mean_min_amp_ied)
+print("Mean amplitude of trough low point:")
+print("SW: ", mean_min_amp_sw)
+print("IED: ", mean_min_amp_ied)
 
-plt.hist(min_amps_ied, bins=50, alpha=0.3, density=True, label="IED pos amps")
-plt.hist(min_amps_sw, bins=50, alpha=0.3, density=True, label="SW pos amps")
-plt.legend()
-plt.show()
+# plt.hist(min_amps_ied, bins=20, alpha=0.3, density=True, label="IED pos amps")
+# plt.hist(min_amps_sw, bins=20, alpha=0.3, density=True, label="SW pos amps")
+# plt.legend()
+# plt.show()
 
 p_range = [20, 10, 5, 1, 0.1]
 sw_percentiles = np.nanpercentile(min_amps_sw, p_range)
@@ -221,11 +226,8 @@ print("-" * 35)
 for p, sw_val, ied_val in zip(p_range, sw_percentiles, ied_percentiles):
     print(f"{p:<12} | {sw_val:>10.2f} | {ied_val:>10.2f}")
 
-# Print the results in a readable format
-print(f"{'Percentile':<12} | {'SW':<10} | {'IED':<10}")
-print("-" * 35)
-for p, sw_val, ied_val in zip(p_range, sw_percentiles, ied_percentiles):
-    print(f"{p:<12} | {sw_val:>10.2f} | {ied_val:>10.2f}")
+# line break
+print()
 
 # Define the specific amplitudes you want to check
 amp_values = [-5000, -4000, -3000, -2000]
@@ -251,9 +253,6 @@ for val in amp_values:
 
 # %% ANALYZE MAXIMAL AMPLITUDE DISTRIBUTION OF IEDs vs SWs
 
-data_dir = "data/annotated"
-
-p_c_struct = get_p_c_struct(data_dir)
 max_amps_sw = []
 max_amps_ied = []
 
@@ -272,7 +271,7 @@ for p, cs in p_c_struct.items():
         ieds_filename = f"Patient{p}_Channel{c}_IEDs.npy"
         ieds_filepath = os.path.join(data_dir, ieds_filename)
 
-        dataset = load_data_as_dataset(signal_filepath, fs=512)
+        dataset = load_data_as_dataset(signal_filepath, fs=fs)
 
         signal = dataset.signal
 
@@ -283,10 +282,10 @@ for p, cs in p_c_struct.items():
         filtered_arr_ied, filtered_arr_sw = filter_for_competing_events(arr_ieds, arr_sws, buffer_s=4)
         
         # find maxima of sws
-        sw_maxima = find_maxima(signal, filtered_arr_sw, fs=512, window_size_s=4, low_pass=4)
+        sw_maxima = find_maxima(signal, filtered_arr_sw, fs=fs, window_size_s=4, low_pass=4)
 
         # find maxima of ieds
-        ied_maxima = find_maxima(signal, filtered_arr_ied, fs=512, window_size_s=4, low_pass=4)
+        ied_maxima = find_maxima(signal, filtered_arr_ied, fs=fs, window_size_s=4, low_pass=4)
 
         # compute amplitudes at maxima
         this_max_amps_sw = signal[sw_maxima]
@@ -299,6 +298,7 @@ for p, cs in p_c_struct.items():
 mean_max_amp_sw = np.mean(max_amps_sw)
 mean_max_amp_ied = np.mean(max_amps_ied)
 
+print("")
 print(mean_max_amp_sw, mean_max_amp_ied)
 
 plt.hist(max_amps_ied, bins=50, alpha=0.3, density=True, label="IED pos amps")
@@ -340,11 +340,6 @@ for val in amp_values:
 
 # %% COMPUTE MIN AMPLITUDES AT EVENTS AND MAX AMPLITUDE BEFORE
 
-data_dir = "data/annotated"
-run_dir = "results/run_all/run11"
-
-p_c_struct = get_p_c_struct(data_dir)
-
 min_max_amps_fp = []
 min_max_amps_sw = []
 min_max_amps_ied = []
@@ -364,7 +359,7 @@ for p, cs in p_c_struct.items():
         ieds_filename = f"Patient{p}_Channel{c}_IEDs.npy"
         ieds_filepath = os.path.join(data_dir, ieds_filename)
 
-        dataset = load_data_as_dataset(signal_filepath, fs=512)
+        dataset = load_data_as_dataset(signal_filepath, fs=fs)
 
         result_filename = f"results_zerocrossrun_all_p{int(p)}_c{c}.pkl"
         result_filepath = os.path.join(run_dir, result_filename)
@@ -386,7 +381,7 @@ for p, cs in p_c_struct.items():
         filtered_detected_sws, arr_sws = filter_for_competing_events(detected_sws, arr_sws, buffer_s=2)
 
         # find minima of fps
-        fp_minima = find_minima(signal, filtered_detected_sws, fs=512, window_size_s=1, low_pass=4)
+        fp_minima = find_minima(signal, filtered_detected_sws, fs=fs, window_size_s=1, low_pass=4)
         fp_minima = fp_minima.astype(int)
 
         segments = [signal[max(0, time - 1024) : time] for time in fp_minima]
@@ -396,7 +391,7 @@ for p, cs in p_c_struct.items():
         min_max_amps_fp.extend(zip(min_amps, max_amps))
 
         # find minima of sws
-        sw_minima = find_minima(signal, filtered_arr_sw, fs=512, window_size_s=1, low_pass=4)
+        sw_minima = find_minima(signal, filtered_arr_sw, fs=fs, window_size_s=1, low_pass=4)
         sw_minima = sw_minima.astype(int)
 
         segments = [signal[max(0, time - 1024) : time] for time in sw_minima]
@@ -406,7 +401,7 @@ for p, cs in p_c_struct.items():
         min_max_amps_sw.extend(zip(min_amps, max_amps))
 
         # find minima of ieds
-        ied_minima = find_minima(signal, filtered_arr_ied, fs=512, window_size_s=1, low_pass=4)
+        ied_minima = find_minima(signal, filtered_arr_ied, fs=fs, window_size_s=1, low_pass=4)
         ied_minima = ied_minima.astype(int)
 
         segments = [signal[max(0, time - 1024) : time] for time in ied_minima]
@@ -418,7 +413,6 @@ for p, cs in p_c_struct.items():
 min_max_amps_fp = np.asarray(min_max_amps_fp)
 min_max_amps_sw = np.asarray(min_max_amps_sw)
 min_max_amps_ied = np.asarray(min_max_amps_ied)
-#%% unite cells later
 amp_diffs_fp = np.array([(pair[0], pair[1], pair[1]-pair[0]) for pair in min_max_amps_fp])
 amp_diffs_sw = np.array([(pair[0], pair[1], pair[1]-pair[0]) for pair in min_max_amps_sw])
 amp_diffs_ied = np.array([(pair[0], pair[1], pair[1]-pair[0]) for pair in min_max_amps_ied])
@@ -427,7 +421,6 @@ print("FP mean amp diff ", np.mean(amp_diffs_fp[:,2]))
 print("SW mean amp diff ", np.mean(amp_diffs_sw[:,2]))
 print("IED mean amp diff ", np.mean(amp_diffs_ied[:,2]))
 
-#%% unite cells laer
 
 plt.scatter(min_max_amps_sw[:,1], min_max_amps_sw[:,0])
 # plt.hist(max_amps_sw, bins=50, alpha=0.3, density=True, label="SW pos amps")
@@ -436,7 +429,6 @@ plt.show()
 
 print(np.corrcoef(min_max_amps_sw[:,1], min_max_amps_sw[:,0]))
 print(np.corrcoef(min_max_amps_ied[:,1], min_max_amps_ied[:,0]))
-#%% unite cells later
 
 ratio_min_max_fp = np.array([abs(pair[0])/pair[1] for pair in min_max_amps_fp])
 # FP Statistics
@@ -472,19 +464,9 @@ plt.hist(np.sort(ratio_min_max_ied)[10:-10], bins=50, alpha=0.3, density=True, l
 plt.legend()
 plt.show()
 
-# %%
-
-# Calculate the 'steepness' of the drop
-# Assuming fs=512, look at the change over 10 samples (~20ms)
-sw_slopes = [np.min(np.diff(signal[idx-10 : idx+1])) for idx in sw_minima]
-ied_slopes = [np.min(np.diff(signal[idx-10 : idx+1])) for idx in ied_minima]
-
-print(f"SW Median Slope: {np.median(sw_slopes)}")
-print(f"IED Median Slope: {np.median(ied_slopes)}")
-
 # %% COMPUTE FULL WIDTH AT HALF MAXIMUM 
 
-def get_peak_fwhm(signal, peak_idx, fs=512, search_win_s=0.2):
+def get_peak_fwhm(signal, peak_idx, fs=fs, search_win_s=0.2):
     """Calculates the width of a positive peak at 50% of its height."""
     peak_val = signal[peak_idx]
     
@@ -504,7 +486,7 @@ def get_peak_fwhm(signal, peak_idx, fs=512, search_win_s=0.2):
     width_ms = (np.sum(is_above_half) / fs) * 1000
     return width_ms
 
-def get_trough_fwhm(signal, trough_idx, fs=512, search_win_s=0.2):
+def get_trough_fwhm(signal, trough_idx, fs=fs, search_win_s=0.2):
     """Calculates the width of a negative trough at 50% of its height."""
     trough_val = signal[trough_idx]
     
@@ -521,12 +503,6 @@ def get_trough_fwhm(signal, trough_idx, fs=512, search_win_s=0.2):
     # Samples below the half-way line
     is_below_half = region < half_depth
     return (np.sum(is_below_half) / fs) * 1000
-
-
-data_dir = "data/annotated"
-run_dir = "results/run_all/run11"
-
-p_c_struct = get_p_c_struct(data_dir)
 
 fwhm_ratios_fp = []
 fwhm_ratios_sws = []
@@ -555,7 +531,7 @@ for p, cs in p_c_struct.items():
 
         detected_sws = np.array(this_result.stims_sp)
 
-        dataset = load_data_as_dataset(signal_filepath, fs=512)
+        dataset = load_data_as_dataset(signal_filepath, fs=fs)
 
         signal = dataset.signal
 
@@ -569,15 +545,15 @@ for p, cs in p_c_struct.items():
         filtered_detected_sws, arr_sws = filter_for_competing_events(detected_sws, arr_sws, buffer_s=2)
 
         # find minima of fp detections
-        fp_minima = find_minima(signal, filtered_detected_sws, fs=512, window_size_s=1, low_pass=4)
+        fp_minima = find_minima(signal, filtered_detected_sws, fs=fs, window_size_s=1, low_pass=4)
         fp_minima = fp_minima.astype(int)
 
         # find minima of sws
-        sw_minima = find_minima(signal, filtered_arr_sw, fs=512, window_size_s=1, low_pass=4)
+        sw_minima = find_minima(signal, filtered_arr_sw, fs=fs, window_size_s=1, low_pass=4)
         sw_minima = sw_minima.astype(int)
 
         # find minima of sws
-        ied_minima = find_minima(signal, filtered_arr_ied, fs=512, window_size_s=1, low_pass=4)
+        ied_minima = find_minima(signal, filtered_arr_ied, fs=fs, window_size_s=1, low_pass=4)
         ied_minima = ied_minima.astype(int)
 
         for trough_idx in fp_minima:
@@ -599,7 +575,7 @@ for p, cs in p_c_struct.items():
             absolute_peak_idx = search_start + local_peak_idx
             
             # 3. Compute the width of that specific peak
-            p_width = get_peak_fwhm(signal, absolute_peak_idx, fs=512)
+            p_width = get_peak_fwhm(signal, absolute_peak_idx, fs=fs)
 
             if t_width > 0:
                 fwhm_ratios_fp.append(p_width/t_width)
@@ -623,7 +599,7 @@ for p, cs in p_c_struct.items():
             absolute_peak_idx = search_start + local_peak_idx
             
             # 3. Compute the width of that specific peak
-            p_width = get_peak_fwhm(signal, absolute_peak_idx, fs=512)
+            p_width = get_peak_fwhm(signal, absolute_peak_idx, fs=fs)
 
             if t_width > 0:
                 fwhm_ratios_sws.append(p_width/t_width)
@@ -647,7 +623,7 @@ for p, cs in p_c_struct.items():
             absolute_peak_idx = search_start + local_peak_idx
             
             # 3. Compute the width of that specific peak
-            p_width = get_peak_fwhm(signal, absolute_peak_idx, fs=512)
+            p_width = get_peak_fwhm(signal, absolute_peak_idx, fs=fs)
 
             if t_width > 0:
                 fwhm_ratios_ieds.append(p_width/t_width)
@@ -677,11 +653,6 @@ print(f"Cleaned IED STD: {np.std(clean_ied_ratios):.3f}")
 print(f"IED Median: {np.median(fwhm_ratios_ieds):.3f}")
 print(f"IED IQR: {np.percentile(fwhm_ratios_ieds, 75) - np.percentile(fwhm_ratios_ieds, 25):.3f}")
 
-
-# %%
-
-# We need to make sure we are comparing lists of the same length
-# If you didn't save the amplitudes in the same loop, you can just plot the ratios
 plt.figure(figsize=(10, 6))
 
 # Plotting the distributions
@@ -699,29 +670,119 @@ plt.legend()
 plt.grid(alpha=0.3)
 plt.show()
 
-# %%
-
 print(fwhm_ratios_sws.shape)
 print(fwhm_ratios_ieds.shape)
+# %% COMPUTE HIGH FREQUENCY AMPLITUDE ENERGY AROUND EVENTS 
 
-# %%
-print(amp_diffs_sw[:,2].shape)
+max_amps_sw = []
+max_amps_ied = []
+max_amps_fp = []
 
+for p, cs in p_c_struct.items():
 
-#plt.scatter(amp_diffs_sw[:,0], fwhm_ratios_sws, color="green", alpha=0.3, label="slow waves")
-plt.scatter(amp_diffs_ied[:,0], fwhm_ratios_ieds, color="red", alpha=0.3, label="ieds")
-plt.xlabel("amplitude difference between trough and peak / uV")
-plt.ylabel("fwhm ratio between trough and peak")
+    for c in cs:
+       
+        # load data
+        signal_filename = f"Patient{p}_Channel{c}_EEG.npy"
+        signal_filepath = os.path.join(data_dir, signal_filename)
+
+        sws_filename = f"Patient{p}_Channel{c}_negSWs.npy"
+        sws_filepath = os.path.join(data_dir, sws_filename)
+
+        ieds_filename = f"Patient{p}_Channel{c}_IEDs.npy"
+        ieds_filepath = os.path.join(data_dir, ieds_filename)
+
+        dataset = load_data_as_dataset(signal_filepath, fs=fs)
+
+        result_filename = f"results_zerocrossrun_all_p{int(p)}_c{c}.pkl"
+        result_filepath = os.path.join(run_dir, result_filename)
+
+        with open(result_filepath, "rb") as f:
+            this_result = pickle.load(f)
+
+        detected_sws = np.array(this_result.stims_sp)
+
+        signal = dataset.signal
+
+        sos = butter(4, [20, 80], btype="bandpass", fs=fs, output="sos")
+        hf_signal = sosfiltfilt(sos, signal)
+
+        arr_sws = np.load(sws_filepath)
+        arr_ieds = np.load(ieds_filepath)
+
+        # filter for competing events
+        filtered_arr_ied, filtered_arr_sw = filter_for_competing_events(arr_ieds, arr_sws, buffer_s=4)
+        
+        # filter such that only detected slow waves that aren't slow waves remain
+        filtered_detected_sws, arr_sws = filter_for_competing_events(detected_sws, arr_sws, buffer_s=2)
+        
+        # find maxima of sws
+        sw_minima = find_minima(signal, filtered_arr_sw, fs=fs, window_size_s=1)
+        sw_maxima = find_maxima(hf_signal, sw_minima/fs-0.15, fs=fs, window_size_s=0.2)
+        # find maxima of ieds
+        ied_minima = find_minima(signal, filtered_arr_ied, fs=fs, window_size_s=1)
+        ied_maxima = find_maxima(hf_signal, ied_minima/fs-0.15, fs=fs, window_size_s=0.2)
+        # find maxima of false positives
+        fp_minima = find_minima(signal, filtered_detected_sws, fs=fs, window_size_s=1)
+        fp_maxima = find_maxima(hf_signal, fp_minima/fs-0.15, fs=fs, window_size_s=0.2)
+
+        # compute high frequency amplitude 150 ms before minimum
+        this_max_amps_sw = hf_signal[sw_maxima]
+        this_max_amps_ied = hf_signal[ied_maxima]
+        this_max_amps_fp = hf_signal[fp_maxima]
+        #print(len(this_max_amps_sw))
+        # extend list 
+        max_amps_sw.extend(this_max_amps_sw)
+        max_amps_ied.extend(this_max_amps_ied)
+        max_amps_fp.extend(this_max_amps_fp)
+
+print(len(max_amps_sw))
+print(len(max_amps_ied))
+print(len(max_amps_fp))
+
+mean_max_amp_sw = np.mean(max_amps_sw)
+mean_max_amp_ied = np.mean(max_amps_ied)
+mean_max_amp_fp = np.mean(max_amps_fp)
+
+print("")
+print(mean_max_amp_sw, mean_max_amp_ied, mean_max_amp_fp)
+
+plt.hist(max_amps_ied, bins=50, alpha=0.3, density=True, label="IED pos amps")
+plt.hist(max_amps_sw, bins=50, alpha=0.3, density=True, label="SW pos amps")
+plt.hist(max_amps_fp, bins=50, alpha=0.3, density=True, label="FP pos amps")
 plt.legend()
 plt.show()
 
-# %%
+p_range = [20, 30, 40, 50, 60, 70, 80, 90, 95, 99, 99.9]
+sw_percentiles = np.nanpercentile(max_amps_sw, p_range)
+ied_percentiles = np.nanpercentile(max_amps_ied, p_range)
+fp_percentiles = np.nanpercentile(max_amps_fp, p_range)
 
+# Print the results in a readable format
+print(f"{'Percentile':<12} | {'SW':<10} | {'IED':<10}")
+print("-" * 35)
+for p, sw_val, ied_val, fp_val in zip(p_range, sw_percentiles, ied_percentiles, fp_percentiles):
+    print(f"{p:<12} | {sw_val:>10.2f} | {ied_val:>10.2f}| {fp_val:>10.2f}") 
 
+# Define the specific amplitudes you want to check
+amp_values = [2000, 3000, 4000, 5000]
 
-double_stats_fp = np.dstack((ratio_min_max_fp, fwhm_ratios_fp))
+# Convert lists to numpy arrays
+sw_array = np.array(max_amps_sw)
+ied_array = np.array(max_amps_ied)
 
-print(double_stats_fp.shape)
-print(double_stats_fp)
+# Use the arrays for the masking operation
+sw_clean = sw_array[~np.isnan(sw_array)]
+ied_clean = ied_array[~np.isnan(ied_array)]
 
-# %%
+# Print the results in the same structure as before
+print(f"{'Amplitude':<12} | {'SW %-tile':<10} | {'IED %-tile':<10}")
+print("-" * 38)
+
+for val in amp_values:
+    # kind='rank' gives the percentage of values less than or equal to the score
+    sw_p = stats.percentileofscore(sw_clean, val, kind='rank')
+    ied_p = stats.percentileofscore(ied_clean, val, kind='rank')
+    
+    print(f"{val:<12} | {sw_p:>10.2f}% | {ied_p:>10.2f}%")
+ # %%

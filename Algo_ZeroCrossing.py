@@ -2,6 +2,7 @@ import numpy as np
 from Simulations import PhaseTrackerResult, PhaseTrackerStatus
 from typing import Tuple
 from collections import deque
+from scipy.signal import butter, sosfilt, sosfilt_zi
 
 # ===============================
 # Adaptive amplitude estimator
@@ -26,7 +27,6 @@ class RollingQuantileThreshold:
         thr = max(thr, self.ceil_uv)
         return thr
 
-
 # ===============================
 # Zero-crossing phase tracker
 # ===============================
@@ -42,9 +42,7 @@ class PhaseTracker:
         backoff_sp: int = 2500,
         stim_delay_sp: int = 0,
         interstim_sp: int = 1000,
-        history_len: int = 2000,
-
-        # --- NEW adaptive amplitude parameters ---
+        history_len: int = 350, # changed from 250, 2000
         amp_q: float = 0.2,
         amp_warmup: int = 50,
         amp_maxlen: int = 3000,
@@ -62,6 +60,14 @@ class PhaseTracker:
             floor_uv=amp_floor_uv,
             ceil_uv=amp_ceil_uv,
         )
+
+        # filtering for IEDs
+        self.freqs = [20, 80]
+        self.lookback = 0.15 # mean delay between positive spike and negative trough of IED
+        self.filter_thr = 300 # uV, changed from 520
+        self.sos = butter(4, [20, 80], btype="bandpass", fs=fs, output="sos")
+        self.zi = sosfilt_zi(self.sos)
+        self._filtered_history = deque(maxlen=history_len)
 
         # timing
         self.min_interval_sp = int(min_interval_ms * fs / 1000)
@@ -121,10 +127,19 @@ class PhaseTracker:
                     amp_thr = self.amp_est.value(self.base_min_peak_uv)
                     internals["amp_thr"] = amp_thr
 
+                    # high frequency band filter
+                    filtered_sample, self.zi = sosfilt(self.sos, [signal], zi=self.zi)
+                    self._filtered_history.append(filtered_sample[0])
+                    hf_window = list(self._filtered_history)
+
+                    if np.max(hf_window) > self.filter_thr:
+                        print(f"max filtered amp at this point is {np.max(hf_window)}")
+
                     # final SW decision
                     if (
                         self._neg_peak <= amp_thr
                         and self.min_interval_sp <= interval <= self.max_interval_sp
+                        and np.max(hf_window) <= self.filter_thr
                     ):
                         self._last_stim_sp = self._current_time_sp
                         self._awaiting_poszc = False

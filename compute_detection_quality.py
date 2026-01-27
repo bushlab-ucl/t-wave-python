@@ -124,7 +124,7 @@ result_pat = re.compile(r"p(?P<p>\d+)_c(?P<c>\d+)")
 all_results = []
 tol_range = np.linspace(0.1, 1, num=10)
 
-for res_file in os.listdir("results/run_all/run09"):
+for res_file in os.listdir("results/run_all/run11"):
     # extract IDs
     match = result_pat.search(res_file)
     if not match: continue
@@ -140,7 +140,7 @@ for res_file in os.listdir("results/run_all/run09"):
         continue
 
     # load and process
-    with open(f"results/run_all/run09/{res_file}", "rb") as f:
+    with open(f"results/run_all/run11/{res_file}", "rb") as f:
         this_result = pickle.load(f)
     
     this_times = np.array(this_result.stims_sp) / this_result.Dataset.fs

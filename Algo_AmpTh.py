@@ -9,7 +9,7 @@ class PhaseTracker():
 
     def __init__(
         self,
-        threshold_uv: float = -80,
+        threshold_uv: float = -1500, # changed from -80
         adaptive: bool = True,
         adaptive_window_sp: int = 1000,
         backoff_sp: int = 1250,
